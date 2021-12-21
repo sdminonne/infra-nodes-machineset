@@ -1,0 +1,25 @@
+---
+- hosts: localhost
+  gather_facts: false
+  connection: local
+  vars: 
+    cluster: "{{ query('kubernetes.core.k8s', kind='Infrastructure', resource_name='cluster') }}"
+    machinesets : "{{ query('kubernetes.core.k8s', kind='MachineSet', api_version='v1beta1', namespace='openshift-machine-api') }}"
+    rootdir: "{{ lookup('pipe', 'git rev-parse --show-toplevel') }}"
+  
+  tasks:        
+    - name: Fetch cluster type
+      set_fact:
+        type: "{{ cluster[0].spec.platformSpec.type }}"
+
+    - name: Fetch availability zones
+      set_fact:
+          azs: "{{ machinesets | json_query('[*].spec.template.spec.providerSpec.value.placement.availabilityZone') }}"
+
+    - name: Fetch infrastructure_id 
+      set_fact:
+          infrastructure_id: "{{ cluster[0].status.infrastructureName }}"
+    
+    - name: Create the infra
+      include_tasks: "{{ rootdir }}/playbooks/tasks/infra-machineset.yaml"
+      loop: "{{  azs }}" 

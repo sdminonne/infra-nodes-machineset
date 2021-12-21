@@ -1,0 +1,37 @@
+---
+- name: Create temporary file
+  ansible.builtin.tempfile:
+   state: file
+   suffix: temp
+  register: tempfile
+
+- name: Copy AWS template for infra-node machineset
+  ansible.builtin.copy:
+    src: "{{ rootdir }}/manifests/machineset-infranode-template-aws.yaml"
+    dest: "{{ tempfile.path }}"
+  when: type == "AWS"
+# TODO: add other template
+
+- name: Replacing <infrastruture_id> in machineset-infranode-template.yaml
+  ansible.builtin.replace:
+    path: "{{ tempfile.path }}"
+    regexp: '<infrastructure_id>'
+    replace: "{{ infrastructure_id }}"
+
+- name: Replacing <zone> in machineset-infranode-template.yaml
+  ansible.builtin.replace:
+    path: "{{ tempfile.path }}"
+    regexp: '<zone>'
+    replace: "{{ item }}"
+
+#- name: Ensure machineset CR  exists
+#  kubernetes.core.k8s:
+#  state: present
+#  src: "{{ tempfile.path }}"
+
+- name: Removing file {{ tempfile.path }} at the end
+  ansible.builtin.file:
+    path: "{{ tempfile.path }}"
+    state: absent 
+
+
